@@ -59,15 +59,42 @@ curl -X 'POST' \
 
 ```bash
 # команда перехода в нужную директорию
+cd services
 
-# команда для запуска микросервиса в режиме docker compose
+# команда для создания образа
+docker image build . -f Dockerfile_ml_service --tag price_prediction:v1
+
+# команда для запуска контейнера
+docker container run --publish 4601:8081 --env-file .env --volume=./models:/price_app/models price_prediction:v1
 ```
 
 ### Пример curl-запроса к микросервису
 
 ```bash
 curl -X 'POST' \
-  'http://localhost:...' \
+  'http://localhost:4601/api/price/?flat_id=123' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "id": 1, 
+  "flat_id": 0, 
+  "building_id": 6220, 
+  "floor": 9, 
+  "kitchen_area": 9.90, 
+  "living_area": 19.900000, 
+  "rooms": 1, 
+  "is_apartment": false, 
+  "studio": false, 
+  "total_area": 35.099998, 
+  "build_year": 1965, 
+  "building_type_int": 6, 
+  "latitude": 55.717113, 
+  "longitude": 37.781120, 
+  "ceiling_height": 2.64, 
+  "flats_count": 84, 
+  "floors_total": 12, 
+  "has_elevator": true
+}'
 ```
 
 ## 3. Docker compose для микросервиса и системы моониторинга

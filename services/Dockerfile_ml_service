@@ -1,0 +1,7 @@
+FROM python:3.11-slim
+COPY . ./price_app
+WORKDIR price_app 
+RUN pip3 install -r requirements.txt
+EXPOSE ${APP_PORT}
+VOLUME /models
+CMD uvicorn --app-dir=ml_service price_app:price_app --reload --port ${APP_PORT} --host 0.0.0.0
