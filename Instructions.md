@@ -101,16 +101,39 @@ curl -X 'POST' \
 
 ```bash
 # команда перехода в нужную директорию
+cd services
 
 # команда для запуска микросервиса в режиме docker compose
-
+docker compose up --build
 ```
 
 ### Пример curl-запроса к микросервису
 
 ```bash
 curl -X 'POST' \
-  'http://localhost:
+  'http://localhost:4601/api/price/?flat_id=123' \
+  -H 'accept: application/json' \
+  -H 'Content-Type: application/json' \
+  -d '{
+  "id": 1, 
+  "flat_id": 0, 
+  "building_id": 6220, 
+  "floor": 9, 
+  "kitchen_area": 9.90, 
+  "living_area": 19.900000, 
+  "rooms": 1, 
+  "is_apartment": false, 
+  "studio": false, 
+  "total_area": 35.099998, 
+  "build_year": 1965, 
+  "building_type_int": 6, 
+  "latitude": 55.717113, 
+  "longitude": 37.781120, 
+  "ceiling_height": 2.64, 
+  "flats_count": 84, 
+  "floors_total": 12, 
+  "has_elevator": true
+}'
 ```
 
 ## 4. Скрипт симуляции нагрузки
@@ -122,6 +145,6 @@ curl -X 'POST' \
 ```
 
 Адреса сервисов:
-- микросервис: http://localhost:<port>
-- Prometheus: ...
-- Grafana: ...
+- микросервис: http://localhost:4601
+- Prometheus: http://localhost:9090
+- Grafana: http://localhost:3000

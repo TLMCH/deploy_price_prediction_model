@@ -1,6 +1,9 @@
 """FastAPI-приложение для предсказания цены квартиры."""
 
-from fastapi import FastAPI, Body
+from fastapi import FastAPI
+from fastapi.responses import PlainTextResponse
+from prometheus_fastapi_instrumentator import Instrumentator
+import numpy as np
 from fast_api_handler import FastApiHandler
 
 """
@@ -14,6 +17,10 @@ uvicorn --app-dir=ml_service price_app:price_app --reload --port 8081 --host 0.0
 
 # создаём приложение FastAPI
 price_app = FastAPI()
+
+# инициализируем и запускаем экпортёр метрик
+instrumentator = Instrumentator()
+instrumentator.instrument(price_app).expose(price_app)
 
 # создаём обработчик запросов для API
 price_app.handler = FastApiHandler()
