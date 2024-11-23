@@ -3,6 +3,7 @@
 from fastapi import FastAPI
 from fastapi.responses import PlainTextResponse
 from prometheus_fastapi_instrumentator import Instrumentator
+from prometheus_client import Histogram, Counter
 import numpy as np
 from fast_api_handler import FastApiHandler
 
@@ -25,6 +26,20 @@ instrumentator.instrument(price_app).expose(price_app)
 # создаём обработчик запросов для API
 price_app.handler = FastApiHandler()
 
+price_app_predictions = Histogram(
+    # имя метрики
+    "price_app_predictions",
+    # описание метрики
+    "Histogram of predictions",
+    # указываем корзины для гистограммы
+    buckets=(6_000_000, 7_000_000, 8_000_000, 9_000_000, 10_000_000)
+)
+
+price_app_count = Counter(
+    "price_app_count",
+    "Count of predictions"
+)
+
 @price_app.post("/api/price/") 
 def get_prediction_for_item(flat_id: str, model_params: dict):
     """Функция для получения предсказания цены квартиры.
@@ -40,4 +55,7 @@ def get_prediction_for_item(flat_id: str, model_params: dict):
         "flat_id": flat_id,
         "model_params": model_params
     }
-    return price_app.handler.handle(all_params)
+    response = price_app.handler.handle(all_params)
+    price_app_predictions.observe(response["prediction"])
+    price_app_count.inc()
+    return response

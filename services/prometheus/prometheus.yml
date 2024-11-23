@@ -10,7 +10,7 @@ scrape_configs:
   # имя сборщика
   - job_name: 'scrapping-price-app'
 
-    # c какой страницы собирать метрики?
+    # c какой страницы собирать метрики
     metrics_path: /metrics
     scheme: http
     
