@@ -1,14 +1,13 @@
 
 """Класс FastApiHandler, который обрабатывает запросы API."""
 
-from catboost import CatBoostRegressor
 import pandas as pd
 import joblib
-import numpy as np
+import logging
+
 
 class FastApiHandler:
     """Класс FastApiHandler, который обрабатывает запрос и возвращает предсказание."""
-
 
     def __init__(self):
         """Инициализация переменных класса."""
@@ -37,6 +36,14 @@ class FastApiHandler:
                 'is_apartment', 'studio', 'total_area', 'build_year', 
                 'building_type_int', 'latitude', 'longitude', 'ceiling_height', 'flats_count', 'floors_total', 'has_elevator'
             ]
+        
+        self.logger = logging.getLogger('fast_api_handler')
+        self.logger.setLevel(logging.INFO)
+        logger_handler = logging.FileHandler('ml_service/fast_api_handler_log.log')
+        logger_handler.setLevel(logging.INFO)
+        logger_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        logger_handler.setFormatter(logger_formatter)
+        self.logger.addHandler(logger_handler)
 
 
     def load_model(self, model_path: str):
@@ -48,7 +55,7 @@ class FastApiHandler:
             with open(model_path, 'rb') as fd:
                 self.model = joblib.load(fd) 
         except Exception as e:
-            print(f"Failed to load model: {e}")
+            self.logger.error(f"Failed to load model: {e}")
 
 
     def load_column_transformer(self, column_transformer_path: str):
@@ -60,7 +67,7 @@ class FastApiHandler:
             with open(column_transformer_path, 'rb') as fd:
                 self.column_transformer = joblib.load(fd) 
         except Exception as e:
-            print(f"Failed to load column_transformer: {e}")
+            self.logger.error(f"Failed to load column_transformer: {e}")
 
     
     def load_auto_feat_regressor(self, auto_feat_regressor_path: str):
@@ -72,8 +79,25 @@ class FastApiHandler:
             with open(auto_feat_regressor_path, 'rb') as fd:
                 self.auto_feat_regressor = joblib.load(fd) 
         except Exception as e:
-            print(f"Failed to load auto_feat_regressor: {e}")
+            self.logger.error(f"Failed to load auto_feat_regressor: {e}")
 
+
+    def floor_type(self, row):
+            if row['floor'] == 1:
+                return 0
+            elif row['floor'] == row['floors_total']:
+                return 2
+            else:
+                return 1
+
+
+    def d_f_c_long(self, x):
+            return abs(x - 37.6)
+    
+
+    def d_f_c_lat(self, x):
+            return abs(x - 55.74)
+    
 
     def transform_data(self, original_model_params: dict) -> pd.DataFrame:
         """Трансформируем входные данные, для обработки моделью.
@@ -82,25 +106,11 @@ class FastApiHandler:
         Returns:
             pd.DataFrame: pandas DataFrame с обработанными данными.
         """
-        def floor_type(row):
-            if row['floor'] == 1:
-                return 0
-            elif row['floor'] == row['floors_total']:
-                return 2
-            else:
-                return 1
-
-        def d_f_c_long(x):
-            return abs(x - 37.6)
-
-        def d_f_c_lat(x):
-            return abs(x - 55.74)
-
         data = pd.DataFrame(original_model_params, index=[0])
 
-        data['floor_type'] = data.apply(floor_type, axis=1)
-        data['distance_from_center_longitude'] = data['longitude'].apply(d_f_c_long)
-        data['distance_from_center_latitude'] = data['latitude'].apply(d_f_c_lat)
+        data['floor_type'] = data.apply(self.floor_type, axis=1)
+        data['distance_from_center_longitude'] = data['longitude'].apply(self.d_f_c_long)
+        data['distance_from_center_latitude'] = data['latitude'].apply(self.d_f_c_lat)
 
         num_features = [
             'total_area',
@@ -138,13 +148,13 @@ class FastApiHandler:
                 bool: True — если есть нужные параметры, False — иначе
         """
         if "flat_id" not in query_params or "model_params" not in query_params:
-                return False
+            return False
         
         if not isinstance(query_params["flat_id"], self.param_types["flat_id"]):
-                return False
+            return False
                 
         if not isinstance(query_params["model_params"], self.param_types["model_params"]):
-                return False
+            return False
         return True
     
 
@@ -157,7 +167,7 @@ class FastApiHandler:
         Returns:
             bool: True — если есть нужные параметры, False — иначе
         """
-        if set(model_params.keys()) == set(self.required_model_params):
+        if set(model_params.keys()).issubset(self.required_model_params):
             return True
         return False
     
@@ -172,16 +182,16 @@ class FastApiHandler:
             - **dict**: Cловарь со всеми параметрами запроса.
         """
         if self.check_required_query_params(params):
-                print("All query params exist")
+            self.logger.info("All query params exist")
         else:
-                print("Not all query params exist")
-                return False
+            self.logger.info("Not all query params exist")
+            return False
         
         if self.check_required_model_params(params["model_params"]):
-                print("All model params exist")
+            self.logger.info("All model params exist")
         else:
-                print("Not all model params exist")
-                return False
+            self.logger.info("Not all model params exist")
+            return False
         return True
         
 
@@ -197,12 +207,12 @@ class FastApiHandler:
         try:
             # валидируем запрос к API
             if not self.validate_params(params):
-                print("Error while handling request")
+                self.logger.error("Error while handling request")
                 response = {"Error": "Problem with parameters"}
             else:
                 model_params = self.transform_data(params["model_params"])
                 flat_id = params["flat_id"]
-                print(f"Predicting for flat_id: {flat_id} and model_params:\n{model_params.to_dict('list')}")
+                self.logger.info(f"Predicting for flat_id: {flat_id} and model_params:\n{model_params.to_dict('list')}")
                 # получаем предсказания модели
                 prediction = self.model.predict(model_params.iloc[0, :])
                 response = {
@@ -210,9 +220,10 @@ class FastApiHandler:
                         "prediction": prediction.round()
                     }
         except Exception as e:
-            print(f"Error while handling request: {e}")
+            self.logger.error(f"Error while handling request: {e}")
             return {"Error": "Problem with request"}
         else:
+            self.logger.info(response)
             return response
         
 

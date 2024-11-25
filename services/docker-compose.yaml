@@ -17,6 +17,11 @@ services:
         # директория в контейнере
         target: /price_app/models
     hostname: price_app
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   prometheus:
     image: prom/prometheus
@@ -26,7 +31,13 @@ services:
       - 9090:9090
     volumes:
       - "./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml"
-    hostname: prometheus 
+    hostname: prometheus
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+ 
 
   grafana:
     image: grafana/grafana
@@ -37,3 +48,8 @@ services:
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_USER}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASS}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

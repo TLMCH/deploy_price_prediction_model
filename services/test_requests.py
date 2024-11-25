@@ -23,6 +23,9 @@ for i in range(6):
         "has_elevator": True
     }
     response = requests.post(f'http://localhost:4601/api/price/?flat_id={i+1}', json=params)
+    print("Status Code", response.status_code)
+    if response.status_code != 200:
+        break
     if i == 3:
             time.sleep(30)
 
